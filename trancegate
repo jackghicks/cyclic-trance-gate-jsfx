@@ -1,0 +1,157 @@
+desc:Cyclic Trance Gate
+
+slider1:stepsPerBeat=4<1,128,1>Steps Per Beat
+slider2:patternLength=16<3,64,1>Pattern Length (steps)
+slider3:adsrAttack=3<1.0,5000,1>Attack (ms)
+slider4:adsrDecay=1000<1,15000,1>Decay (ms)
+slider5:adsrSustain=-12.0<-120.0,24.0,1.0>Sustain (dB)
+slider6:adsrRelease=500<1.0,5000,1>Release (ms)
+
+import adsr.jsfx-inc
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+last_subbeat_position = -1;
+last_interacted_pattern_pos = -1;
+lastPatternValue = -1;
+spin_start_angle = -999999;
+
+@slider
+
+adsr.adsr_seta(adsrAttack * 0.001);
+adsr.adsr_setd(adsrDecay * 0.001);
+adsr.adsr_sets(exp(log(10)/20 * adsrSustain));
+adsr.adsr_setr(adsrRelease * 0.001);
+
+@serialize
+i=0;
+while(
+  file_var(0,patternContent[i]);
+  i+=1;
+  i<64;
+);
+
+file_var(0,patternOffset);
+
+@sample
+singleBeatDuration = 60.0/tempo;
+subBeatDuration = singleBeatDuration / stepsPerBeat;
+subbeat_position = floor(play_position / subBeatDuration) % patternLength;
+last_subbeat_position != subbeat_position ? (
+  patternValue = patternContent[(subbeat_position+patternOffset)%patternLength];
+  patternValue != lastPatternValue ? ( patternValue == 1 ? adsr.adsr_a(1.0) : adsr.adsr_r(); );
+  lastPatternValue = patternValue;
+  last_subbeat_position = subbeat_position;
+);
+
+
+adsr.adsr_process() ?
+  (
+    spl0 *= adsr.env;
+    spl1 *= adsr.env;
+  ) : spl0 = spl1 = 0;
+
+
+@gfx
+gfx_a = 1.0;
+_uiDiameter = min(gfx_w, gfx_h);
+
+// draw background and purple circle
+gfx_clear = 0xEEEEEE;
+//gfx_r = 0.7;
+//gfx_g = 0.0;
+//gfx_b = 0.7;
+//gfx_circle(gfx_w/2, gfx_h/2, ( _uiDiameter / 2 ) - 5, 1, 1 );
+//gfx_r = 0.0;
+//gfx_g = 0.0;
+//gfx_b = 0.0;
+//gfx_circle(gfx_w/2, gfx_h/2, ( _uiDiameter / 2 ) - 5 - _uiDiameter * 0.12, 1, 1 );
+//gfx_r = 0.7;
+//gfx_g = 0.0;
+//gfx_b = 0.7;
+
+// draw the cursor for the current beat position around the wheel
+cursorLength = _uiDiameter / 2 - 5;
+pi = $pi;
+stepSizeSingleBeat = (2*pi)/patternLength;
+//cursorStep = subbeat_position % patternLength;
+//cursorAngle = cursorStep * stepSizeSingleBeat;
+//gfx_set(0xFFFFFF);
+//gfx_arc(gfx_w/2, gfx_h/2, ( _uiDiameter / 2 ) - 5 - _uiDiameter * 0.13 + 1, cursorAngle, cursorAngle+stepSizeSingleBeat, 1);
+//gfx_arc(gfx_w/2, gfx_h/2, ( _uiDiameter / 2 ) - 5 - _uiDiameter * 0.13, cursorAngle, cursorAngle+stepSizeSingleBeat, 1);
+//gfx_arc(gfx_w/2, gfx_h/2, ( _uiDiameter / 2 ) - 5 - _uiDiameter * 0.13 - 1, cursorAngle, cursorAngle+stepSizeSingleBeat, 1);
+//gfx_arc(gfx_w/2, gfx_h/2, ( _uiDiameter / 2 ) - 5 - _uiDiameter * 0.13 - 2, cursorAngle, cursorAngle+stepSizeSingleBeat, 1);
+
+
+function drawSegment(i, radiusOffset, angleOffset)
+(
+  coord_a_x = gfx_w/2 + cos(i*stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2+angleOffset) * (_uiDiameter / 2 - 5 + radiusOffset);
+  coord_a_y = gfx_h/2 + sin(i*stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2+angleOffset) * (_uiDiameter / 2 - 5 + radiusOffset);
+
+  coord_b_x = gfx_w/2 + cos(i*stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2+angleOffset) * (_uiDiameter / 2 - 5 - _uiDiameter * 0.12 - radiusOffset);
+  coord_b_y = gfx_h/2 + sin(i*stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2+angleOffset) * (_uiDiameter / 2 - 5 - _uiDiameter * 0.12 - radiusOffset);
+  
+  coord_c_x = gfx_w/2 + cos(i*stepSizeSingleBeat+stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2-angleOffset) * (_uiDiameter / 2 - 5 + radiusOffset);
+  coord_c_y = gfx_h/2 + sin(i*stepSizeSingleBeat+stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2-angleOffset) * (_uiDiameter / 2 - 5 + radiusOffset);
+  
+  coord_d_x = gfx_w/2 + cos(i*stepSizeSingleBeat+stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2-angleOffset) * (_uiDiameter / 2 - 5 - _uiDiameter * 0.12 - radiusOffset);
+  coord_d_y = gfx_h/2 + sin(i*stepSizeSingleBeat+stepSizeSingleBeat-pi/2-stepSizeSingleBeat/2-angleOffset) * (_uiDiameter / 2 - 5 - _uiDiameter * 0.12 - radiusOffset);
+
+  gfx_triangle(coord_a_x, coord_a_y, coord_b_x, coord_b_y, coord_c_x, coord_c_y, coord_d_x, coord_d_y);
+);
+
+// draw the "beat present" indicators
+i=0;
+while(
+  gfx_set(0.5, 0, 0.7);
+  drawSegment(i, 0, 0);
+
+  patternContent[(i+patternOffset)%patternLength] == 1 ? gfx_set(0.93,0.9,0.93) : gfx_set(0.1, 0, 0.3);
+  drawSegment(i, -_uiDiameter*0.1, -0.005);
+
+  // indicate current with white half alpha overlay
+  subbeat_position % patternLength == i ? ( gfx_set(1,1,1,0.5); drawSegment(i, 0, 0); );
+
+  i+=1;
+  i<patternLength;
+);
+
+// handle left mouse clicks by toggling positions on and off
+mouse_cap & 1 == 1 ? (
+  click_pos_x = mouse_x - gfx_w / 2;
+  click_pos_y = mouse_y - gfx_h / 2;
+  click_angle = atan2(click_pos_y, click_pos_x) + $pi + stepSizeSingleBeat/2;
+  click_patternPos = (floor(click_angle/(($pi*2)/patternLength)) + patternLength - (patternLength/4)) % patternLength;
+  click_patternPos = (click_patternPos + patternOffset) % patternLength;
+  last_interacted_pattern_pos != click_patternPos ? (
+    patternContent[click_patternPos] = patternContent[click_patternPos] == 0 ? 1 : 0;
+    last_interacted_pattern_pos = click_patternPos;
+  );
+) : last_interacted_pattern_pos = -1;
+
+// handle right mouse drags by shifting the patterns
+mouse_cap & 2 == 2 ? (
+  click_pos_x = mouse_x - gfx_w / 2;
+  click_pos_y = mouse_y - gfx_h / 2;
+  spin_current_angle = atan2(click_pos_y , click_pos_x) + $pi;
+  
+  spin_start_angle != -1 ? (
+    spin_delta_angle = spin_start_angle - spin_current_angle;
+    spin_delta_angle = abs(spin_delta_angle) > $pi ? (spin_start_angle - spin_current_angle) - sign(spin_delta_angle)*2*$pi : spin_delta_angle; 
+    spion_indicator_radius = sqrt(click_pos_x*click_pos_x + click_pos_y*click_pos_y);
+    gfx_set(0.5, 0, 0.7);
+    gfx_arc( gfx_w / 2, gfx_h / 2, spion_indicator_radius, spin_start_angle - $pi/2, spin_start_angle - spin_delta_angle - $pi/2, 1);
+  
+    abs(spin_delta_angle) >= stepSizeSingleBeat ? (
+      spin_start_angle = spin_current_angle;
+      patternOffset += sign(spin_delta_angle);
+    );
+  );
+  spin_start_angle == -1 ? (
+    spin_start_angle = spin_current_angle;
+  );
+) : spin_start_angle = -1;
